@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AIは、意味の近さで選んでいる｜Qlipperとの議論をIDEATECHに置き換える</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6F9;--surface:#FFFFFF;--ink:#152038;--ink-2:#47526B;--ink-3:#727B94;--rule:#D6DBE4;
+  --accent:#2B44D4;--accent-soft:#DCE2FB;--accent-ink:#1B2C93;
+  --marker:#FFE14D;--marker-hl:rgba(255,225,77,.75);
+  --seo:#9AA0AF;--seo-soft:#E2E4EA;
+  --font-body:"BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;
+  --font-head:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E121C;--surface:#161C2B;--ink:#E8ECF4;--ink-2:#B3BACB;--ink-3:#8A93A9;--rule:#2A3249;
+    --accent:#8E9DFF;--accent-soft:#232B55;--accent-ink:#CDD4FF;
+    --marker:#E9C93B;--marker-hl:rgba(233,201,59,.32);
+    --seo:#6A7186;--seo-soft:#262C3C;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E121C;--surface:#161C2B;--ink:#E8ECF4;--ink-2:#B3BACB;--ink-3:#8A93A9;--rule:#2A3249;
+  --accent:#8E9DFF;--accent-soft:#232B55;--accent-ink:#CDD4FF;
+  --marker:#E9C93B;--marker-hl:rgba(233,201,59,.32);
+  --seo:#6A7186;--seo-soft:#262C3C;color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.85;-webkit-text-size-adjust:100%;font-feature-settings:"palt" 0}
+a{color:var(--accent-ink)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+img,svg{max-width:100%}
+
+.hero{max-width:1120px;margin:0 auto;padding:64px 24px 24px}
+.hero .meta{font-size:14px;color:var(--ink-3);margin:0 0 22px}
+.hero h1 .nb{display:inline-block}
+.hero h1{font-family:var(--font-head);font-weight:800;font-size:clamp(36px,6.4vw,68px);line-height:1.18;letter-spacing:.02em;margin:0 0 24px;max-width:16em}
+.hero .sub{font-family:var(--font-head);font-weight:600;font-size:clamp(18px,2.2vw,22px);line-height:1.6;color:var(--ink-2);margin:0 0 20px}
+.hero .lede{max-width:40em;font-size:17px;color:var(--ink);margin:0}
+
+.mapwrap{margin-top:40px;background:var(--surface);border:1px solid var(--rule);border-radius:16px;padding:20px 20px 18px}
+.maptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.seg{font:inherit;font-size:14px;border:1px solid var(--rule);background:transparent;color:var(--ink-2);padding:7px 14px;border-radius:999px;cursor:pointer}
+.seg[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.mapscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mapscroll svg{display:block;width:100%;min-width:660px;height:auto}
+.mapnote{margin:10px 0 0;font-size:15px;color:var(--ink);max-width:46em;min-height:3.6em}
+.mapcap{margin:6px 0 0;font-size:13px;color:var(--ink-3)}
+
+svg text{font-family:var(--font-body)}
+.c{fill:var(--accent-soft);fill-opacity:.72;stroke:var(--accent);stroke-opacity:.45;stroke-width:1}
+.c.seo{fill:var(--seo-soft);stroke:var(--seo);stroke-opacity:.9}
+.cl{fill:var(--ink);font-weight:700;font-size:17px}
+.cl.seo{fill:var(--ink-3)}
+.w{fill:var(--ink-2);font-size:15px}
+.w.seo{fill:var(--ink-3)}
+.ring{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:5 5;opacity:.35;transition:opacity .6s}
+.ringl{fill:var(--accent-ink);font-size:13px;font-weight:700;opacity:.5;transition:opacity .6s}
+#mapfig[data-state="target"] .ring,#mapfig[data-state="target"] .ringl{opacity:1}
+#dot{transform:translate(260px,350px);transition:transform 1s cubic-bezier(.2,.7,.2,1)}
+#mapfig[data-state="target"] #dot{transform:translate(455px,275px)}
+.dotc{fill:var(--marker);stroke:var(--ink);stroke-width:1.5}
+.dotl{fill:var(--ink);font-weight:700;font-size:14px}
+@media (prefers-reduced-motion:reduce){#dot,.ring,.ringl{transition:none}html{scroll-behavior:auto}}
+
+.layout{max-width:1120px;margin:0 auto;padding:16px 24px 64px;display:grid;grid-template-columns:minmax(0,1fr);column-gap:56px}
+nav.toc{display:none}
+@media (min-width:1100px){
+  .layout{grid-template-columns:190px minmax(0,1fr)}
+  nav.toc{display:block;position:sticky;top:calc(24px + env(safe-area-inset-top,0px));align-self:start;padding-top:64px}
+}
+nav.toc p{font-size:13px;color:var(--ink-3);margin:0 0 10px}
+nav.toc ul{list-style:none;margin:0;padding:0;border-left:1px solid var(--rule)}
+nav.toc a{display:block;padding:5px 0 5px 14px;margin-left:-1px;border-left:2px solid transparent;font-size:14px;line-height:1.5;color:var(--ink-2);text-decoration:none}
+nav.toc a:hover{color:var(--ink)}
+nav.toc a.on{color:var(--ink);border-left-color:var(--accent);font-weight:700}
+main{min-width:0;max-width:820px}
+main section{padding-top:56px;margin-top:56px;border-top:1px solid var(--rule)}
+main section:first-child{border-top:0;margin-top:0;padding-top:48px}
+h2{font-family:var(--font-head);font-weight:800;font-size:clamp(25px,3.2vw,33px);line-height:1.4;letter-spacing:.01em;margin:0 0 20px}
+h3{font-size:18px;font-weight:700;line-height:1.6;margin:40px 0 10px}
+p{margin:0 0 1em;max-width:40em}
+.mark{background:linear-gradient(transparent 58%,var(--marker-hl) 58%);padding:0 .1em}
+.muted{color:var(--ink-3);font-size:14px}
+
+.core{display:grid;gap:26px;margin-top:8px}
+.core > div{padding-left:18px;border-left:3px solid var(--accent);border-radius:0}
+.core h3{margin:0 0 6px;font-family:var(--font-head);font-weight:800;font-size:21px}
+.core p{margin:0}
+
+figure{margin:28px 0 32px}
+.fig{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig svg{display:block;width:100%;min-width:640px;height:auto}
+figcaption{font-size:14px;color:var(--ink-3);margin-top:10px;max-width:46em;line-height:1.7}
+.bx{fill:var(--paper);stroke:var(--rule);stroke-width:1}
+.bx.hi{fill:var(--accent-soft);stroke:var(--accent)}
+.bt{fill:var(--ink);font-weight:700;font-size:15px}
+.bs{fill:var(--ink-2);font-size:13px}
+.lane{fill:var(--ink);font-weight:700;font-size:16px}
+.lanes{fill:var(--ink-3);font-size:13px}
+.an{fill:var(--accent-ink);font-size:13px;font-weight:700}
+.an2{fill:var(--ink-3);font-size:13px}
+.ln{stroke:var(--ink-3);stroke-width:1.2;fill:none}
+.ln.hi{stroke:var(--accent);stroke-width:2.4}
+.arrowhead{fill:none;stroke:var(--ink-3);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.vA{fill:var(--accent-soft);fill-opacity:.8;stroke:var(--accent);stroke-width:1}
+.vB{fill:var(--marker);fill-opacity:.28;stroke:var(--ink-2);stroke-width:1}
+.leader{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 4;fill:none}
+
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:22px 0 28px}
+table{border-collapse:collapse;width:100%;min-width:660px;font-size:15px;line-height:1.7}
+th{text-align:left;font-weight:700;color:var(--ink-2);font-size:13px;padding:8px 12px;border-bottom:2px solid var(--ink);white-space:nowrap}
+td{padding:14px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+td:first-child{font-weight:700;min-width:10em}
+
+.note{background:var(--accent-soft);border-radius:10px;padding:18px 22px;margin:24px 0}
+.note p{margin:0}
+.note p + p{margin-top:.6em}
+
+ul.loose{padding-left:1.2em;margin:12px 0 20px;max-width:42em}
+ul.loose li{margin-bottom:.9em}
+ul.loose li strong{color:var(--ink)}
+
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:24px 0 28px}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;padding:16px 0;border-bottom:1px solid var(--rule)}
+ol.steps li:first-child{border-top:1px solid var(--rule)}
+ol.steps li::before{content:counter(s);font-family:var(--font-head);font-weight:800;font-size:26px;line-height:1.2;color:var(--accent)}
+ol.steps strong{display:block;font-size:17px;margin-bottom:2px}
+ol.steps p{margin:0}
+
+.cases{display:grid;gap:32px;margin-top:20px}
+@media (min-width:760px){.cases{grid-template-columns:1fr 1fr}}
+.case{border-top:2px solid var(--ink);padding-top:14px}
+.case h3{margin:0 0 4px;font-family:var(--font-head);font-weight:800;font-size:21px}
+.case .k{font-size:14px;color:var(--ink-3);margin:0 0 12px}
+.case p{font-size:15px}
+
+details{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-top:20px}
+summary{cursor:pointer;padding:14px 0;font-weight:700;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋";display:inline-block;width:1.6em;color:var(--accent)}
+details[open] summary::before{content:"－"}
+
+footer{max-width:1120px;margin:0 auto;padding:28px 24px 56px;color:var(--ink-3);font-size:13px;line-height:1.8;border-top:1px solid var(--rule)}
+footer p{max-width:60em;margin:0}
+
+@media (max-width:600px){
+  .hero{padding-top:40px}
+  .mapwrap{padding:14px}
+  main section{padding-top:40px;margin-top:40px}
+}
+
+/* ---- スマホ・タブレット対応 ---- */
+@media (max-width:1099px){
+  nav.toc{display:block;position:sticky;top:0;z-index:10;margin:0 -24px;padding:10px 24px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:var(--paper);border-bottom:1px solid var(--rule)}
+  nav.toc p{display:none}
+  nav.toc ul{display:flex;gap:8px;border-left:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav.toc ul::-webkit-scrollbar{display:none}
+  nav.toc li{flex:0 0 auto}
+  nav.toc a{margin:0;padding:6px 12px;border:1px solid var(--rule);border-radius:999px;font-size:13px;white-space:nowrap;background:var(--surface)}
+  nav.toc a.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+  html{scroll-padding-top:calc(64px + env(safe-area-inset-top,0px))}
+}
+.swipe{display:none;font-size:12px;color:var(--ink-3);margin:0 0 6px}
+@media (max-width:700px){
+  .swipe{display:block}
+  .hero,.layout,footer{padding-left:16px;padding-right:16px}
+  nav.toc{margin:0 -16px;padding-left:16px;padding-right:16px}
+  .hero h1{font-size:clamp(30px,9vw,40px)}
+  .hero .lede{font-size:16px}
+  .mapwrap{margin-top:28px;border-radius:12px}
+  .mapnote{min-height:0;font-size:14px}
+  .fig{padding:12px}
+  .core h3,.case h3{font-size:19px}
+  .note{padding:16px}
+  ol.steps li{grid-template-columns:36px minmax(0,1fr);gap:8px}
+  /* 表はカード型に */
+  .tbl{overflow:visible}
+  .tbl table{min-width:0}
+  .tbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .tbl tr{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+  .tbl td{display:block;border:0;padding:4px 0;min-width:0}
+  .tbl td:first-child{font-size:16px;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid var(--rule)}
+  .tbl td[data-label]:not(:first-child)::before{content:attr(data-label);display:block;font-size:12px;font-weight:700;color:var(--accent-ink);margin-top:4px}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="meta">社内共有メモ　株式会社トドオナダ（Qlipper）白石さんとのMTGより</p>
+  <h1><span class="nb">AIは、</span><span class="nb">意味の近さで</span><span class="nb">選んでいる</span></h1>
+  <p class="sub">Qlipperとの議論を、IDEATECHのLLMO戦略に置き換える</p>
+  <p class="lede">生成AIが会社や商品を推薦するとき、見ているのは記事の書き方ではなく、質問の「意味」と会社の「意味」がどれだけ重なっているか。だとすると、IDEATECHがやるべきことは、カテゴリ名が背負っている連想の中に自社とクライアントを入れ込み、その状態を発信の量と継続で保つことになる。リサピー、ルールメイク、IDEA LLMO Boardは、この見方でかなり整理し直せる。</p>
+
+  <div class="mapwrap">
+    <div class="maptools" role="group" aria-label="地図の表示切り替え">
+      <button class="seg" type="button" data-state="now" aria-pressed="true">いまの地図（仮説）</button>
+      <button class="seg" type="button" data-state="target" aria-pressed="false">狙う地図</button>
+    </div>
+    <p class="swipe" aria-hidden="true">← 図は横にスクロールできます →</p>
+    <div class="mapscroll">
+      <svg id="mapfig" data-state="now" viewBox="0 0 960 520" role="img" aria-labelledby="mapT mapD">
+        <title id="mapT">IDEATECHの意味の地図（概念図）</title>
+        <desc id="mapD">調査PR、BtoBマーケティング、LLMO・AI対策、SEOの4つの連想のまとまり。IDEATECHはいま調査PRの中にいて、狙う位置は調査PR・BtoBマーケティング・AI対策が重なる場所。LLMO対策という言葉はSEOのまとまりと重なっている。</desc>
+        <ellipse class="c" cx="280" cy="330" rx="210" ry="130"/>
+        <ellipse class="c" cx="470" cy="160" rx="200" ry="125"/>
+        <ellipse class="c" cx="620" cy="330" rx="200" ry="130"/>
+        <ellipse class="c seo" cx="800" cy="410" rx="140" ry="95"/>
+
+        <text class="cl" x="170" y="252" text-anchor="middle">調査PR</text>
+        <text class="w" x="160" y="306" text-anchor="middle">調査リリース</text>
+        <text class="w" x="330" y="302" text-anchor="middle">リサピー</text>
+        <text class="w" x="160" y="402" text-anchor="middle">プレスリリース</text>
+        <text class="w" x="370" y="397" text-anchor="middle">ファクト</text>
+        <text class="w" x="270" y="437" text-anchor="middle">調査データ</text>
+
+        <text class="cl" x="470" y="84" text-anchor="middle">BtoBマーケティング</text>
+        <text class="w" x="380" y="132" text-anchor="middle">購買行動</text>
+        <text class="w" x="580" y="132" text-anchor="middle">ホワイトペーパー</text>
+        <text class="w" x="330" y="187" text-anchor="middle">リード獲得</text>
+        <text class="w" x="510" y="197" text-anchor="middle">バイヤージャーニー</text>
+
+        <text class="cl" x="690" y="252" text-anchor="middle">LLMO・AI対策</text>
+        <text class="w" x="610" y="297" text-anchor="middle">ChatGPT</text>
+        <text class="w" x="560" y="357" text-anchor="middle">生成AI</text>
+        <text class="w" x="590" y="417" text-anchor="middle">引用</text>
+        <text class="w" x="760" y="347" text-anchor="middle">LLMO対策</text>
+        <text class="w" x="700" y="397" text-anchor="middle">AI検索</text>
+
+        <text class="cl seo" x="860" y="442" text-anchor="middle">SEO</text>
+        <text class="w seo" x="880" y="397" text-anchor="middle">共起語</text>
+        <text class="w seo" x="760" y="442" text-anchor="middle">AIO</text>
+        <text class="w seo" x="830" y="478" text-anchor="middle">検索順位</text>
+
+        <circle class="ring" cx="455" cy="275" r="48"/>
+        <text class="ringl" x="455" y="344" text-anchor="middle">狙う位置</text>
+
+        <g id="dot">
+          <circle class="dotc" cx="0" cy="0" r="10"/>
+          <text class="dotl" x="0" y="29" text-anchor="middle">IDEATECH</text>
+        </g>
+      </svg>
+    </div>
+    <p class="mapnote" id="mapnote" aria-live="polite">いまの見立て：IDEATECHは「調査PR」「プレスリリース」の連想とは強く結びついている。一方で「LLMO対策」という言葉はSEOの連想と重なっていて、そこに正面から入ると、SEO業者と同じ土俵で戦うことになる。</p>
+    <p class="mapcap">概念図で、実測ではない。実際の位置はQlipperで意味集合を取って確かめる。</p>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="目次">
+    <p>目次</p>
+    <ul>
+      <li><a href="#core">議論の核心</a></li>
+      <li><a href="#how">AIが答えを選ぶ仕組み</a></li>
+      <li><a href="#reread">打ち手の読み直し</a></li>
+      <li><a href="#rule">ルールメイクとの関係</a></li>
+      <li><a href="#self">IDEATECH自身に当てはめる</a></li>
+      <li><a href="#offer">提案への組み込み</a></li>
+      <li><a href="#cases">クライアントへの当てはめ</a></li>
+      <li><a href="#caveat">割り引いて聞く点</a></li>
+      <li><a href="#next">次の一手</a></li>
+      <li><a href="#terms">用語</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="core">
+      <h2>議論の核心</h2>
+      <div class="core">
+        <div>
+          <h3>AIは「意味の近さ」で選ぶ</h3>
+          <p>質問が持つ連想（意味集合）と、会社や商品が持つ連想を照らし合わせ、重なりが大きいものを答えにする。文章の書き方を整えても、連想が重なっていなければ候補にすら上がらない。</p>
+        </div>
+        <div>
+          <h3>AI検索でも、事前学習でも同じ</h3>
+          <p>AI検索は約1,000件の検索結果を意味でふるい、10件ほどに絞ってから回答を書く。FAQ化や箇条書きといったGEO対策が効くのは、その10件に残った後だけ。事前学習も意味の地図を少しずつ動かす仕組みで、どちらのルートも最後は意味で決まる。</p>
+        </div>
+        <div>
+          <h3>地図は、発信の量と新しさで動く</h3>
+          <p>1本の記事で地図が動くのはわずか。1つのサイトから取り込まれる量にも上限がある。だから複数のドメインで、止めずに発信する。トドオナダ社の調べでは、カットオフが3か月違うモデルの間で、想起される会社の約7割が入れ替わっていた。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>AIが答えを選ぶ2つのルート</h2>
+      <p>AIの回答には、その場で検索して探すルートと、学習済みの「頭の中の地図」から答えるルートがある。トドオナダ社の主張は、どちらも中身は同じ仕組み（トランスフォーマー）で動いていて、選ぶ基準は意味の一致度だけ、というもの。</p>
+      <figure>
+        <p class="swipe" aria-hidden="true">← 図は横にスクロールできます →</p>
+        <div class="fig">
+          <svg viewBox="0 0 960 340" role="img" aria-labelledby="rtT rtD">
+            <title id="rtT">AI検索と事前学習の2つのルート</title>
+            <desc id="rtD">AI検索は質問を分解し約1000件を集め、意味でふるって約10件にし、AIが回答する。大半はふるいで脱落し、GEO対策が効くのは最後の段階。事前学習は発信をAIが読み、予測が外れると地図が少し動き、次のモデルに反映される。どちらも最後は意味の近さで選ばれる。</desc>
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M2 1L8 5L2 9"/></marker>
+            </defs>
+            <text class="lane" x="24" y="92">AI検索</text>
+            <text class="lanes" x="24" y="114">その場で探す</text>
+            <rect class="bx" x="170" y="66" width="170" height="60" rx="8"/>
+            <text class="bt" x="255" y="91" text-anchor="middle">質問を分解</text>
+            <text class="bs" x="255" y="112" text-anchor="middle">サブクエリ5個程度</text>
+            <line class="ln" x1="342" y1="96" x2="362" y2="96" marker-end="url(#ah)"/>
+            <rect class="bx" x="366" y="66" width="170" height="60" rx="8"/>
+            <text class="bt" x="451" y="91" text-anchor="middle">検索で集める</text>
+            <text class="bs" x="451" y="112" text-anchor="middle">約1,000件</text>
+            <line class="ln" x1="538" y1="96" x2="558" y2="96" marker-end="url(#ah)"/>
+            <rect class="bx hi" x="562" y="66" width="170" height="60" rx="8"/>
+            <text class="bt" x="647" y="91" text-anchor="middle">意味でふるう</text>
+            <text class="bs" x="647" y="112" text-anchor="middle">大半がここで脱落</text>
+            <line class="ln" x1="734" y1="96" x2="754" y2="96" marker-end="url(#ah)"/>
+            <rect class="bx" x="758" y="66" width="170" height="60" rx="8"/>
+            <text class="bt" x="843" y="91" text-anchor="middle">AIが回答</text>
+            <text class="bs" x="843" y="112" text-anchor="middle">残った約10件から</text>
+            <text class="an" x="647" y="152" text-anchor="middle">意味集合対策が効く</text>
+            <text class="an2" x="843" y="152" text-anchor="middle">GEO・書き方対策が効く</text>
+
+            <text class="lane" x="24" y="226">事前学習</text>
+            <text class="lanes" x="24" y="248">頭の中の地図</text>
+            <rect class="bx" x="170" y="200" width="170" height="60" rx="8"/>
+            <text class="bt" x="255" y="225" text-anchor="middle">発信する</text>
+            <text class="bs" x="255" y="246" text-anchor="middle">記事・リリース</text>
+            <line class="ln" x1="342" y1="230" x2="362" y2="230" marker-end="url(#ah)"/>
+            <rect class="bx" x="366" y="200" width="170" height="60" rx="8"/>
+            <text class="bt" x="451" y="225" text-anchor="middle">AIが読んで予測</text>
+            <text class="bs" x="451" y="246" text-anchor="middle">外れたら修正</text>
+            <line class="ln" x1="538" y1="230" x2="558" y2="230" marker-end="url(#ah)"/>
+            <rect class="bx hi" x="562" y="200" width="170" height="60" rx="8"/>
+            <text class="bt" x="647" y="225" text-anchor="middle">地図が少し動く</text>
+            <text class="bs" x="647" y="246" text-anchor="middle">1回ではわずか</text>
+            <line class="ln" x1="734" y1="230" x2="754" y2="230" marker-end="url(#ah)"/>
+            <rect class="bx" x="758" y="200" width="170" height="60" rx="8"/>
+            <text class="bt" x="843" y="225" text-anchor="middle">次のモデルに反映</text>
+            <text class="bs" x="843" y="246" text-anchor="middle">カットオフまでの分</text>
+            <text class="an2" x="451" y="286" text-anchor="middle">繰り返すほど位置が動く</text>
+            <text class="an" x="647" y="286" text-anchor="middle">量・継続・複数ドメイン</text>
+
+            <text class="bt" x="549" y="326" text-anchor="middle">どちらのルートも、最後は「意味の近さ」で選ばれる</text>
+          </svg>
+        </div>
+        <figcaption>GEOの論文は「5本の文章のうち1本の書き方を変えると、要約がどう変わるか」を見た実験。書き方の工夫が効くのは、ふるいを通った後の話になる。「検索1位なのにAIの回答に出てこない」のは、この手前で落ちているから。</figcaption>
+      </figure>
+
+      <h3>正しい答えより、連想が多く重なる答えが出る</h3>
+      <p>トドオナダ社が例に出したのが、オーストラリアの首都をAIが「シドニー」と間違える現象。「首都」の連想には「最大都市」「国の中心」「よく知られている」「政府がある」が並んでいるが、キャンベラが結びついているのは「政府」だけ。重なりの数でシドニーが勝ってしまう。</p>
+      <figure>
+        <p class="swipe" aria-hidden="true">← 図は横にスクロールできます →</p>
+        <div class="fig">
+          <svg viewBox="0 0 960 250" role="img" aria-labelledby="sdT sdD">
+            <title id="sdT">シドニーとキャンベラの例</title>
+            <desc id="sdD">首都という言葉は最大都市、国の中心、よく知られている、政府がある、の4つの連想を持つ。シドニーは最初の3つと結びつき、キャンベラは政府だけと結びつくため、AIはシドニーを答える。</desc>
+            <rect class="bx" x="60" y="105" width="120" height="50" rx="8"/>
+            <text class="bt" x="120" y="135" text-anchor="middle">首都</text>
+            <line class="ln" x1="180" y1="130" x2="298" y2="50"/>
+            <line class="ln" x1="180" y1="130" x2="298" y2="105"/>
+            <line class="ln" x1="180" y1="130" x2="298" y2="160"/>
+            <line class="ln" x1="180" y1="130" x2="298" y2="215"/>
+            <rect class="bx" x="300" y="32" width="160" height="36" rx="6"/>
+            <text class="bs" x="380" y="55" text-anchor="middle">最大都市</text>
+            <rect class="bx" x="300" y="87" width="160" height="36" rx="6"/>
+            <text class="bs" x="380" y="110" text-anchor="middle">国の中心</text>
+            <rect class="bx" x="300" y="142" width="160" height="36" rx="6"/>
+            <text class="bs" x="380" y="165" text-anchor="middle">よく知られている</text>
+            <rect class="bx" x="300" y="197" width="160" height="36" rx="6"/>
+            <text class="bs" x="380" y="220" text-anchor="middle">政府がある</text>
+            <line class="ln hi" x1="462" y1="50" x2="698" y2="85"/>
+            <line class="ln hi" x1="462" y1="105" x2="698" y2="85"/>
+            <line class="ln hi" x1="462" y1="160" x2="698" y2="85"/>
+            <line class="ln" x1="462" y1="215" x2="698" y2="195"/>
+            <text class="an" x="780" y="44" text-anchor="middle">AIが出す答え</text>
+            <rect class="bx hi" x="700" y="55" width="160" height="60" rx="8"/>
+            <text class="bt" x="780" y="80" text-anchor="middle">シドニー</text>
+            <text class="bs" x="780" y="101" text-anchor="middle">連想が3つ重なる</text>
+            <rect class="bx" x="700" y="165" width="160" height="60" rx="8"/>
+            <text class="bt" x="780" y="190" text-anchor="middle">キャンベラ（正解）</text>
+            <text class="bs" x="780" y="211" text-anchor="middle">重なるのは1つ</text>
+          </svg>
+        </div>
+        <figcaption>BtoBに置き換えると、実力が一番でも、カテゴリのイメージと結びついていない会社は推薦されない。社名や商品名は画面に出すためのラベルにすぎず、選ばれるかどうかは中身の連想で決まる。</figcaption>
+      </figure>
+    </section>
+
+    <section id="reread">
+      <h2>IDEATECHの打ち手を、この理論で読み直す</h2>
+      <p>IDEATECHがすでにやっていることの多くは、この理論と同じ方向を向いている。トドオナダ社も「実務としては理想的な動き」と見ていた。違いは、意図してやっていたか、結果的にそうなっていたか。意図してやれば、精度はもう一段上がる。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>打ち手</th><th>この理論で見ると</th><th>さらに強めるなら</th></tr></thead>
+          <tbody>
+            <tr><td>ルールメイク調査</td><td>候補に入った後の「決め手」をつくる作業。選び方コンテンツは、結果的にカテゴリ名と自社の連想もつくっていた。</td><td>基準Xを、カテゴリ名の意味集合にすでに入っている言葉から選ぶ（次章）。</td></tr>
+            <tr><td>リサピー（調査リリース）</td><td>第三者目線のファクトで、複数ドメインに載り、継続しやすい。学習に乗りやすい形式そのもの。</td><td>設問・選択肢・見出しに共起語を入れる。月次契約で「止めない」設計にする。</td></tr>
+            <tr><td>ボイラープレートのRTB化</td><td>リリースのたびに、社名と一般名詞を同じ文脈に置く装置。</td><td>「〇〇の△△」「△△は〇〇」の両方の語順を入れる。主語は社名で書く。</td></tr>
+            <tr><td>選び方コンテンツ</td><td>カテゴリ名・競合名・自社名が同じ文脈に並ぶので、カテゴリの候補リストに入りやすい。</td><td>Qlipperで取れる「観点」を、そのまま章立てに使う。</td></tr>
+            <tr><td>表記の統一（SCSK「PROACTIVE」など）</td><td>一般の英単語や化粧品と意味が混ざるのを防ぐ、ラベルの衝突回避。</td><td>衝突しそうな名称は、意味集合の混ざり方を見てから表記ルールを決める。</td></tr>
+            <tr><td>共催ウェビナー・登壇</td><td>相手の連想を借りる（ピギーバック）。PRの小判鮫作戦と同じ発想。</td><td>相手の社名・テーマ語・IDEATECHを同じ文で書いたレポートを、必ず外に出す。</td></tr>
+            <tr><td>LLMO実行支援のテーマ数</td><td>テーマ数は、そのまま学習に届く発信量。</td><td>6／12／24テーマの段階を「学習量の設計」として説明する。24テーマ＋メディアプロモートは複数ドメイン分散の標準形。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="rule">
+      <h2>ルールメイクと意味集合対策は、順番の関係にある</h2>
+      <p>AIの推薦は2段階で起きている。まず、カテゴリ名を言われたときの候補リスト（想起集合）に入る。次に、候補の中から条件に合うものが選ばれる。ルールメイクは2段目の「決め手」を握る打ち手で、意味集合対策は1段目の「候補入り」を取る打ち手になる。</p>
+      <p>トドオナダ社が指摘したのは、「富裕層なら山、ファミリーなら川」という条件分岐が効くかどうかはユーザーの入力次第で、1段目で落ちていれば2段目は回ってこない、という点だった。加えて、その基準で質問するニーズがユーザー側に育っていなければ、そもそも入力されない。</p>
+      <figure>
+        <p class="swipe" aria-hidden="true">← 図は横にスクロールできます →</p>
+        <div class="fig">
+          <svg viewBox="0 0 960 320" role="img" aria-labelledby="vnT vnD">
+            <title id="vnT">基準Xの選び方</title>
+            <desc id="vnD">カテゴリ名の意味集合と、自社が構造的に勝てる軸の重なりが基準Xの候補。連想にはあるが勝てない軸は触れる程度にとどめ、勝てるが連想にない軸は新語扱いで育つまで時間がかかる。</desc>
+            <circle class="vA" cx="400" cy="165" r="140"/>
+            <circle class="vB" cx="560" cy="165" r="140"/>
+            <text class="bt" x="342" y="125" text-anchor="middle">AIの連想</text>
+            <text class="bs" x="342" y="148" text-anchor="middle">カテゴリ名の意味集合</text>
+            <text class="bt" x="630" y="125" text-anchor="middle">自社の勝ち筋</text>
+            <text class="bs" x="630" y="148" text-anchor="middle">構造的に勝てる軸</text>
+            <text class="bt" x="480" y="168" text-anchor="middle">基準Xの候補</text>
+            <text class="bs" x="480" y="190" text-anchor="middle">ここに立てる</text>
+            <line class="leader" x1="206" y1="232" x2="300" y2="232"/>
+            <text class="an2" x="40" y="226">連想にはあるが勝てない</text>
+            <text class="an2" x="40" y="246">触れる程度にとどめる</text>
+            <line class="leader" x1="660" y1="232" x2="716" y2="232"/>
+            <text class="an2" x="722" y="226">勝てるが連想にない</text>
+            <text class="an2" x="722" y="246">新語扱い。育つまで時間がかかる</text>
+          </svg>
+        </div>
+        <figcaption>これまでの基準Xの条件は「自社が構造的に勝てる軸」。そこに「カテゴリ名の連想にすでに入っている言葉」を重ねる。</figcaption>
+      </figure>
+      <p>両方を一度に取る方法は、基準Xの選び方に一段足すこと。<span class="mark">連想の中にある言葉で基準を立てれば、その基準で語ること自体が、候補入りのための発信にもなる。</span>発見→正当化→ギャップの3段構成はそのまま使える。</p>
+      <div class="note">
+        <p>トドオナダ社の代案は「山用ギアの側に、キャンプの意味を入れていく」だった。キャンプで使える、キャンプで喜ばれている、という事例を積めば、「キャンプ」と言われたときの候補に入っていく。</p>
+        <p>IDEATECHに置き換えると、山用ギアが「調査PR」、キャンプが「BtoBのAI対策」。調査PRの発信の中に、AI対策の文脈を入れ続けることになる。</p>
+      </div>
+    </section>
+
+    <section id="self">
+      <h2>IDEATECH自身に当てはめると</h2>
+
+      <h3>狙う一般名詞を選び直す</h3>
+      <p>トドオナダ社は、「LLMO対策」の意味集合にはSEOの要素が濃く入っているため、自社がそこで上位になることはないと見ていた。IDEATECHも同じ条件にいる。「LLMO対策」を正面から取りにいくと、SEO業者が持つ連想と同じ土俵で戦うことになる。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>一般名詞（候補）</th><th>見立て</th><th>打ち手</th></tr></thead>
+          <tbody>
+            <tr><td>調査PR／調査リリース</td><td>すでに強い足場。ここから引き寄せる。</td><td>支援企業800社以上・調査2,500件以上といった実績を、毎回同じ文脈で書く。</td></tr>
+            <tr><td>BtoBのAI対策／生成AIに選ばれるPR</td><td>調査PRとAI対策の重なり。SEOの色が比較的薄いはず。</td><td>リサピーの発信に「生成AIに引用される」「選定基準」を共起させる。</td></tr>
+            <tr><td>BtoBマーケティング／バイヤージャーニー</td><td>北川との共同研究で、意味を借りられる。</td><td>研究所の発表で「購買行動」「生成AI時代」と並べて書く。</td></tr>
+            <tr><td>LLMO対策</td><td>SEOの連想が濃く、正面からは不利。</td><td>単独では狙わず、「BtoBの」「PRで」と修飾して使う。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">いずれもQlipperで意味集合を取る前の仮説。取ってみて、観点と共起語を確かめてから決める。</p>
+
+      <h3>借りられる連想を、手元の関係から拾う</h3>
+      <ul class="loose">
+        <li><strong>Qlipper（トドオナダ社）</strong>　共催ウェビナー「プレスリリースを本当の意味でAI対策にする」は、「プレスリリース」「AI対策」「意味集合」とIDEATECHを同じ文脈に置ける。導入や提携をリリースにすれば、さらに強く結びつく。</li>
+        <li><strong>レイニー（竹内さん）</strong>　「LLMO」の連想が強い相手。共同登壇とそのレポートで、LLMOの文脈にIDEATECHを置ける。MTGでこの例を出したとき、トドオナダ社の答えは「全くその通り」だった。</li>
+        <li><strong>ランサーズ</strong>　共催ウェビナー「AIに選ばれる企業がやっていること」と、その先の公認パートナー提携。「AIに選ばれる」という文脈をそのまま借りられる。</li>
+        <li><strong>当社フェローの北川／BtoBカスタマージャーニー研究所</strong>　「BtoBの購買行動」の連想を借りる。延べ1,139名の共同調査は、それ自体が強いファクトになる。</li>
+        <li><strong>LLMOジャーナル（アングルクリエイト社）</strong>　外部ドメインとしての価値に加え、AIO・LLMOの文脈に並べる。ただしSEO寄りの連想に引っ張られないよう、IDEATECHの記事は調査とPRの軸で書く。</li>
+        <li><strong>セレブリックス、Bizibl、immedioなどとの共催</strong>　「BtoB営業」「バイヤー」の連想と結びつく。共催のたびに、レポートを外に出す。</li>
+      </ul>
+
+      <h3>新しいラベルは、既存の意味とセットで出す</h3>
+      <p>「BtoBカスタマージャーニー研究所」のような新しい名前は、AIにとって覚えること自体は難しくない。問題は、ユーザーがその名前で質問しないこと。だから名前単独ではなく、「BtoBの購買行動」「生成AI時代のバイヤージャーニー」「調査」といった、すでに連想を持つ言葉と必ずセットで出す。プレミアムビールが「ビールの一種」として理解されたのと同じ考え方になる。</p>
+
+      <h3>発信の量、分散、書き方</h3>
+      <p>トドオナダ社は2日に1回のペースでリリースを打っている。最低ラインは週1。IDEATECHの自社発信も、研究所の調査、共催ウェビナーのレポート、IDEA LLMO Boardの機能追加、実績数字の更新など、ネタを月単位で組んで止めない設計にする。</p>
+      <p>1つのサイトから取り込まれる量には上限（ドメインバジェット）があるので、PR TIMES、LLMOジャーナル、寄稿先、共催先のサイトに散らす。書き方は第三者目線で、「当社」より「IDEATECH（アイデアテック）は」と社名を主語にする。QAサイトのような客観的な文体のほうが、学習に乗りやすい。</p>
+    </section>
+
+    <section id="offer">
+      <h2>クライアント提案への組み込み</h2>
+      <p>IDEA LLMO Board（Monitoring・Strategy・Action List）の流れに、意味集合のレイヤーを差し込む。IDEAインサイトでペルソナを特定するところまでは今と同じで、その先が変わる。</p>
+      <ol class="steps">
+        <li><div><strong>一般名詞を決める</strong><p>ペルソナがAIに入力するカテゴリ名を、IDEAインサイトで特定する。</p></div></li>
+        <li><div><strong>意味集合を取る</strong><p>Qlipperで、カテゴリ名の観点（何について書けばいいか）と共起語（一緒に書けば連想が入る言葉）を取得する。</p></div></li>
+        <li><div><strong>基準Xを選ぶ</strong><p>自社が構造的に勝てる軸のうち、意味集合に入っている言葉を優先する。</p></div></li>
+        <li><div><strong>調査を設計する</strong><p>発見→正当化→ギャップの設問・選択肢・見出しに、共起語を入れる。</p></div></li>
+        <li><div><strong>原稿に埋め込む</strong><p>リリースとボイラープレートに、意味集合を両方向の語順で入れる。Markdownで落とした意味集合をClaudeに渡せば、自然な文に整えるのは難しくない。軸になるコンセプトを先に決め、そこに足していく順番を守る。</p></div></li>
+        <li><div><strong>散らして続ける</strong><p>複数のドメインに、週1以上のペースで配信する。</p></div></li>
+        <li><div><strong>測って直す</strong><p>言及率（結果）と意味集合のカバー（原因）、競合の発信量、新しいモデルのカットオフを見て、施策が届いたかを判定する。</p></div></li>
+      </ol>
+
+      <h3>IDEA LLMO Intelligence Reportに足す章</h3>
+      <p>今の指名／非指名プロンプトの言及率は「結果」の計測。そこに「原因」のレイヤーが加わると、なぜ出ないのか、次に何を書くべきかまでが一本でつながる。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>追加する章</th><th>わかること</th></tr></thead>
+          <tbody>
+            <tr><td>カテゴリ名の意味集合マップ</td><td>AIがそのカテゴリで何を探しているか（観点と共起語）。</td></tr>
+            <tr><td>自社の意味集合カバー</td><td>自社の発信が、その連想のどこまでを押さえているか。</td></tr>
+            <tr><td>競合との発信量の綱引き</td><td>競合が出力を増やしたとき、どこで押し返されているか。</td></tr>
+            <tr><td>モデル更新ごとの判定</td><td>新しいモデルのカットオフに施策期間が入っていたか、効いたか。</td></tr>
+            <tr><td>名称の衝突チェック</td><td>社名や商品名が、別の意味と混ざっていないか。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>最終的に見るKPIは、これまでどおりAI経由の問い合わせ件数・問い合わせ企業の質・受注。意味集合のカバーは、そこに至るまでの先行指標として置く。</p>
+    </section>
+
+    <section id="cases">
+      <h2>クライアントに当てはめると</h2>
+      <div class="cases">
+        <div class="case">
+          <h3>グローバルプロデュース</h3>
+          <p class="k">一般名詞：大型ビジネスイベント、イベント制作会社、社内イベント</p>
+          <p>選定基準調査を冒頭に置いた比較記事の構成は、カテゴリ名とGPを同じ文脈に置く点で、そのまま有効。社内イベント需要のリリースは、「人的資本開示」という強い連想に相乗りしている好例になる。</p>
+          <p>15周年リリースやボイラープレートでは、「大型ビジネスイベントのグローバルプロデュース」と「グローバルプロデュースは大型ビジネスイベントの〜」の両方の語順を入れる。</p>
+        </div>
+        <div class="case">
+          <h3>SCSK　PROACTIVE</h3>
+          <p class="k">一般名詞：ERP、基幹システム、建設業の基幹システム</p>
+          <p>「PROACTIVE」は英単語や化粧品と意味が衝突するので、「SCSKのPROACTIVE」で表記をそろえる提案は、この理論から見ても正しい。</p>
+          <p>コラムでは競合社名を出さない方針のため、名前で相乗りする代わりに、カテゴリ名の観点で章を立てて連想を寄せる。「建設業の基幹システムの選び方」は、Qlipperで取れる観点を章立てに使える題材になる。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="caveat">
+      <h2>割り引いて聞く点と、自社で確かめること</h2>
+      <ul class="loose">
+        <li><strong>ポジショントークでもある。</strong>「書き方対策は無意味、意味集合こそ大事」から「意味集合を出せるのは日本でうちだけ」へ続く流れは、トドオナダ社自身のルールメイク。筋は通っているが、提案に組み込む前に自社データで確かめる。</li>
+        <li><strong>「書き方はほぼ無意味」は言い過ぎ。</strong>10件に残った後の引用のされ方には効くし、1,000件に入るための検索順位も前提として残る。書き方対策は「やめる」ではなく「順番が後」と整理する。</li>
+        <li><strong>「3か月で約7割が入れ替わる」は同社調べ。</strong>提案資料に使う前に条件を確認する。IDEATECHがQlipperで自社検証して発表できれば、それ自体が調査データとして使えるファクトになる。</li>
+        <li><strong>AIOの位置づけとの整合。</strong>IDEA LLMOでは「AI Overview・AIモードはSEOの延長」としてきた。今回の話ではAI検索も意味で選ばれる。「AIOは検索順位が前提になる分SEO寄り、対話型AIは学習の比重が大きい分PR寄り。どちらも最後は意味で選ばれる」と言い直せば、矛盾なく説明できる。</li>
+        <li><strong>技術的な数字には不正確な箇所がある。</strong>たとえば「数億次元」は、意味を表すベクトルの次元数（実際は数千〜1万数千程度）とモデル全体のパラメーター数が混ざっている。社外説明では数字を使わず、仕組みの説明にとどめる。</li>
+      </ul>
+    </section>
+
+    <section id="next">
+      <h2>次の一手</h2>
+      <ol class="steps">
+        <li><div><strong>Qlipperで自社の意味集合を取る</strong><p>IDEATECHの一般名詞候補（調査PR、BtoBのAI対策、LLMO対策など）の観点と共起語を確認する。</p></div></li>
+        <li><div><strong>代表とLLMOチームに共有する</strong><p>ダッシュボード担当も含めて、狙う一般名詞を決める。</p></div></li>
+        <li><div><strong>Intelligence Reportの構成を改訂する</strong><p>意味集合のレイヤーを足した改訂案をつくる。</p></div></li>
+        <li><div><strong>既存クライアント1社でパイロットする</strong><p>GPかSCSKを想定。次のモデル更新のタイミングで効果を判定する。</p></div></li>
+        <li><div><strong>白石さんと契約モデルを相談する</strong><p>自社導入、クライアント提案への組み込み、契約の形を詰める。</p></div></li>
+        <li><div><strong>自社の発信を週1以上に組み直す</strong><p>研究所、共催レポート、機能追加、実績更新を月単位のカレンダーに落とす。</p></div></li>
+      </ol>
+    </section>
+
+    <section id="terms">
+      <h2>用語</h2>
+      <p>議事録には誤変換が多いので、社内で共有するときはこちらの表記に合わせる。</p>
+      <details>
+        <summary>用語と議事録の表記を開く</summary>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>用語</th><th>議事録の表記</th><th>ひとことで</th></tr></thead>
+            <tbody>
+              <tr><td>意味集合</td><td>意味集合、意味深</td><td>言葉が背負っている連想のセット。</td></tr>
+              <tr><td>想起集合</td><td>早期集合、速記法</td><td>カテゴリ名を言われたときに浮かぶ候補リスト。</td></tr>
+              <tr><td>共起語・共起</td><td>狂気語、凶器</td><td>一緒に出てくる言葉。ここでは「先に一緒に書いて連想をつくる」意味で使う。</td></tr>
+              <tr><td>BERT系リランカー</td><td>バート系リランカー、イミリランカー</td><td>検索結果を意味で並べ替える、AI検索のふるい。</td></tr>
+              <tr><td>クエリファンアウト</td><td>クエリーファンアウト</td><td>質問を小分けにして、まとめて検索する仕組み。</td></tr>
+              <tr><td>順伝播・逆伝播</td><td>純電波、逆電波</td><td>予想して、答え合わせして、少しだけ修正する学習の流れ。</td></tr>
+              <tr><td>なす角（コサイン類似度）</td><td>那須川区</td><td>連想の近さを測る計算方法。</td></tr>
+              <tr><td>ピギーバック</td><td>フィギーバック</td><td>強い相手の連想に相乗りすること。</td></tr>
+              <tr><td>ドメインバジェット</td><td>同じ</td><td>1つのサイトから学習に取り込まれる量の上限。</td></tr>
+              <tr><td>カットオフ</td><td>同じ</td><td>モデルが学習したデータの締め日。</td></tr>
+              <tr><td>EverTune</td><td>エバーチューン、エバーチェン</td><td>トドオナダ社がベンチマークしている米国のサービス。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <p>株式会社トドオナダ（Qlipper）とのMTGでの説明と、IDEATECHのLLMO支援の方針をもとに整理した社内向けメモ。図はいずれも概念図で、実測値ではない。</p>
+</footer>
+
+<script>
+(function(){
+  var fig=document.getElementById('mapfig');
+  var note=document.getElementById('mapnote');
+  var notes={
+    now:'いまの見立て：IDEATECHは「調査PR」「プレスリリース」の連想とは強く結びついている。一方で「LLMO対策」という言葉はSEOの連想と重なっていて、そこに正面から入ると、SEO業者と同じ土俵で戦うことになる。',
+    target:'狙う位置：調査PR・BtoBマーケティング・AI対策の3つが重なる場所。SEOとは距離を保ったまま、共催・研究所・Qlipperといった借りられる連想で引き寄せていく。'
+  };
+  var btns=document.querySelectorAll('.seg');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      var s=b.getAttribute('data-state');
+      fig.setAttribute('data-state',s);
+      btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      note.textContent=notes[s];
+    });
+  });
+  document.querySelectorAll('.tbl table').forEach(function(t){
+    var hs=[].map.call(t.querySelectorAll('thead th'),function(h){return h.textContent;});
+    t.querySelectorAll('tbody tr').forEach(function(r){
+      [].forEach.call(r.children,function(c,i){if(hs[i])c.setAttribute('data-label',hs[i]);});
+    });
+  });
+  var links=document.querySelectorAll('nav.toc a');
+  if('IntersectionObserver' in window && links.length){
+    var map={};
+    links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(a){a.classList.remove('on');});
+          var a=map[e.target.id]; if(a){a.classList.add('on');var ul=a.closest('ul');if(ul&&ul.scrollWidth>ul.clientWidth){ul.scrollTo({left:a.parentNode.offsetLeft-ul.offsetLeft-16,behavior:'smooth'});}}
+        }
+      });
+    },{rootMargin:'-30% 0px -60% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+  }
+})();
+</script>
+</body>
+</html>
